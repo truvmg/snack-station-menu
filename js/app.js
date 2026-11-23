@@ -1270,6 +1270,7 @@ function removeLoopCopies(list) {
   list.querySelectorAll(".items-track > .is-loop-copy").forEach(n => n.remove());
   const track = list.querySelector(".items-track");
   if (track) track.style.transform = "";
+  list.scrollTop = 0;
 }
 
 // A section that is too long gets a second copy of its rows after the first, and the track
@@ -1333,8 +1334,10 @@ function initAutoScrolling() {
     // SYNCHRONIZED LOOP: one shared clock for the whole board. Every looping section rests at its
     // first item together, then slides up continuously and arrives back at its first item at the
     // same moment as the others (a longer list just moves a little faster). The loop time comes
-    // from the longest list at a comfortable reading speed. Runs on the screen's refresh with a
-    // GPU transform (smooth on Fire TV). While a spotlight covers the board the loop waits.
+    // from the longest list at a comfortable reading speed. Runs on the screen's refresh and moves
+    // the section's own scroll position. (A GPU transform was smoother but made the Fire TV
+    // web view freeze to a black screen after a minute or two, so it is not used.)
+    // While a spotlight covers the board the loop waits.
     const PAUSE_MS = 4500;           // rest on the first items at the start of each loop
     const SPEED_PX_PER_S = 30;       // speed of the longest list (1920x1080 board pixels)
     let cycleStart = performance.now();
@@ -1361,9 +1364,8 @@ function initAutoScrolling() {
       if (!firstLoopDone) window.__boardShownAllAt = Date.now() + (cycle - t) + 500;
       const p = t < PAUSE_MS ? 0 : (t - PAUSE_MS) / loopMs;   // 0..1 through one full set of rows
       myTrackers.forEach(tr => {
-        if (!tr.track) return;
         const y = tr.loop ? p * tr.setH : 0;
-        tr.track.style.transform = y ? `translate3d(0, ${-y.toFixed(2)}px, 0)` : "";
+        if (Math.abs(tr.el.scrollTop - y) >= 0.5) tr.el.scrollTop = y;
       });
     };
     activeAutoScrollInterval = requestAnimationFrame(tick);
