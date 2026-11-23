@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Snack Station Receiver</title>
+  <!--
+    Chromecast receiver for the menu board. Register this page's HTTPS address as a
+    "Custom Receiver" in the Google Cast SDK Developer Console (see README, "Chromecast").
+    It shows index.html at its designed 1920x1080 size, scaled to fit the TV.
+    Preview in a normal browser: receiver.html?screen=tv1 (or tv2, tv3, 1, 2, 3, rotate)
+    Also the best page for a Fire TV browser: it fits the board to the screen, and any remote
+    button press switches to full screen.
+  -->
+  <script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+  <script src="js/cast-config.js"></script>
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #0D0F13; }
+    #board {
+      position: absolute; top: 0; left: 0;
+      width: 1920px; height: 1080px; border: 0;
+      transform-origin: 0 0;
+    }
+  </style>
+</head>
+<body>
+  <iframe id="board" title="Snack Station menu board" allow="screen-wake-lock"></iframe>
+
+  <script>
+    const BOARD_W = 1920, BOARD_H = 1080;
+    const SCREENS = ["1", "2", "3", "rotate"];
+    const frame = document.getElementById("board");
+
+    function fitToScreen() {
+      const scale = Math.min(window.innerWidth / BOARD_W, window.innerHeight / BOARD_H);
+      const x = (window.innerWidth - BOARD_W * scale) / 2;
+      const y = (window.innerHeight - BOARD_H * scale) / 2;
+      frame.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+    }
+
+    // "tv1".."tv3" = follow the menu editor's TV setup for that TV; "1".."3"/"rotate" = fixed board(s).
+    function showScreen(screen) {
+      const value = String(screen || "");
+      const tv = /^tv([1-3])$/.exec(value);
+      frame.src = tv ? `index.html?tv=${tv[1]}` : `index.html?screen=${SCREENS.includes(value) ? value : "rotate"}`;
+    }
+
+    window.addEventListener("resize", fitToScreen);
+    fitToScreen();
+
+    // On a TV browser (Fire TV Silk), pressing any remote button hides the browser's toolbar:
+    // full screen needs a key press or click first, so listen in this page and in the board frame.
+    function goFullScreen() {
+      const root = document.documentElement;
+      if (!document.fullscreenElement && root.requestFullscreen) root.requestFullscreen().catch(() => {});
+    }
+    window.addEventListener("keydown", goFullScreen);
+    window.addEventListener("click", goFullScreen);
+    frame.addEventListener("load", () => {
+      try {
+        frame.contentWindow.addEventListener("keydown", goFullScreen);
+        frame.contentWindow.addEventListener("click", goFullScreen);
+      } catch (e) { /* board on another site: only this page's own keys work */ }
+    });
+    showScreen(new URLSearchParams(location.search).get("screen") || "rotate");
+
+    // Only start the Cast receiver on an actual Chromecast; in a normal browser this is just a preview.
+    const onChromecast = /CrKey/.test(navigator.userAgent);
+    if (onChromecast && window.cast && cast.framework) {
+      const ns = (window.SNACK_CAST && SNACK_CAST.namespace) || "urn:x-cast:com.snackstation.menu";
+      const context = cast.framework.CastReceiverContext.getInstance();
+
+      // Messages from cast.html / tools/cast.js: { screen: "tv1"|"tv2"|"tv3"|"1"|"2"|"3"|"rotate" } or { reload: true }
+      context.addCustomMessageListener(ns, (event) => {
+        const data = event.data || {};
+        if (data.screen) showScreen(data.screen);
+        if (data.reload) frame.contentWindow.location.reload();
+      });
+
+      const options = new cast.framework.CastReceiverOptions();
+      options.disableIdleTimeout = true;   // keep showing the menu after the phone/laptop disconnects
+      options.skipPlayersLoad = true;      // no video player needed
+      options.customNamespaces = { [ns]: cast.framework.system.MessageType.JSON };
+      context.start(options);
+    }
+  </script>
+</body>
+</html>

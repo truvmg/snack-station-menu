@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="Snack Station official 4K/1080p digital signage menu board system with live weather, real-time pricing, and automatic multi-screen rotation.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0A0A0C">
+  <title>Snack Station • Official Digital Signage Menu Board</title>
+  <link rel="icon" type="image/png" href="assets/brand/favicon.png">
+  
+  <!-- Preconnect to Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Righteous&family=Plus+Jakarta+Sans:ital,wght@0,500;0,700;0,800;0,900;1,800&family=JetBrains+Mono:wght@700;800&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="kiosk-mode">
+  <!-- Top auto-rotate timer progress bar -->
+  <div id="rotate-progress-bar" class="rotate-progress-bar hidden"></div>
+
+  <!-- Anti-burn-in root wrapper: slightly shifted by 1-2px periodically -->
+  <div id="screen-container" class="screen-container">
+    
+    <!-- Top Header Bar matching Snack Station Authentic Branding -->
+    <header class="menu-header">
+      <div class="header-left">
+        <!-- Main dynamic board title matching physical signs -->
+        <h1 id="board-headline" class="board-headline">
+          <span class="headline-primary">PIZZA &amp; WINGS</span>
+        </h1>
+      </div>
+
+      <!-- Center Screen / TV Board Switcher -->
+      <nav class="board-switcher" aria-label="Menu Boards">
+        <button class="board-tab active" data-board="Pizza &amp; Wings" id="tab-board-1">
+          <span class="tab-emoji">🍕</span>
+          <span class="tab-text-lines"><span>PIZZA</span><span>&amp; WINGS</span></span>
+        </button>
+        <button class="board-tab" data-board="Platters &amp; Favorites" id="tab-board-2">
+          <span class="tab-emoji">🥩</span>
+          <span class="tab-text-lines"><span>PLATTERS</span><span>&amp; FAVORITES</span></span>
+        </button>
+        <button class="board-tab" data-board="Smoothies &amp; Healthy" id="tab-board-3">
+          <span class="tab-emoji">🥤</span>
+          <span class="tab-text-lines"><span>SMOOTHIES</span><span>&amp; SHAKES</span></span>
+        </button>
+        <button class="board-tab tab-rotate" id="tab-auto-rotate" title="Auto-cycle between all 3 screens every 18 seconds">
+          <span class="tab-rotate-icon">⟳</span>
+          <span class="tab-text-lines"><span>AUTO</span><span>CYCLE</span></span>
+        </button>
+      </nav>
+
+      <!-- Right Logo & Live Status Group -->
+      <div class="header-right">
+        <!-- Live Weather Box (Centered Dynamic Rows) -->
+        <div class="weather-widget-centered" title="Live Local Weather">
+          <div class="weather-temp-row">
+            <span class="weather-icon" id="weather-icon">☀️</span>
+            <span class="weather-temp" id="weather-temp">72°F</span>
+          </div>
+          <div class="weather-city-line" id="weather-city">NEW YORK, NY</div>
+        </div>
+
+        <!-- Dynamic Centered Clock & Date Widget -->
+        <div class="clock-widget-centered">
+          <div class="clock-time-line">
+            <span id="clock-digits" class="clock-digits-main">--:--</span>
+          </div>
+          <div class="clock-day-line">
+            <span id="clock-day">FRI</span>
+            <span class="clock-dot-sep">•</span>
+            <span id="clock-ampm" class="clock-ampm-badge">PM</span>
+          </div>
+          <div class="clock-date-line">
+            <span id="connection-status" class="status-indicator-mini online" title="Menu Live & Connected">
+              <span class="status-dot-mini"></span>
+            </span>
+            <span id="clock-month-day">NOV 6</span>
+          </div>
+        </div>
+
+        <!-- Official Snack Station Logo from physical menu boards -->
+        <div class="official-brand-logo">
+          <img src="assets/brand/snack_station_logo_clean.png" alt="Snack Station" class="header-official-logo">
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Dynamic Board Viewport -->
+    <main id="menu-board" class="menu-board" aria-live="polite">
+      <!-- Dynamic columns generated based on active Board -->
+      <div class="loading-skeleton">
+        <div class="skeleton-column"></div>
+        <div class="skeleton-column"></div>
+        <div class="skeleton-column"></div>
+        <div class="skeleton-column"></div>
+      </div>
+    </main>
+
+    <!-- Bottom Ticker / Kiosk Footer -->
+    <footer class="menu-footer">
+      <div class="ticker-label">
+        <span class="ticker-tag">SPECIALS</span>
+      </div>
+      <div class="ticker-viewport">
+        <div class="ticker-content" id="ticker-content"><!-- Filled by js/app.js renderTicker(); deals are editable from the Google Sheet ("Ticker" rows) -->
+        </div>
+      </div>
+      <div class="footer-meta">
+        <div class="footer-contact-pills">
+          <span class="contact-pill phone-pill" title="Call to Order Ahead">
+            <svg class="pill-svg phone-svg" viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+              <path d="M6.62 10.79a15.05 15.05 0 006.59 6.59l2.2-2.2a1 1 0 011.02-.24c1.12.37 2.33.57 3.57.57a1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1.02l-2.2 2.2z"/>
+            </svg>
+            <span class="pill-text">347-202-7432</span>
+          </span>
+          <span class="contact-pill insta-pill" title="Follow us on Instagram">
+            <svg class="pill-svg insta-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+              <circle cx="12" cy="12" r="4"></circle>
+              <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+            </svg>
+            <span class="pill-text">@snackstation718</span>
+          </span>
+        </div>
+        <span id="last-sync-time" class="sync-time">Synced: Just now</span>
+        <button id="dev-panel-toggle" class="secret-panel-btn" title="Press Ctrl+M or click to open Tech Settings" aria-label="Settings">⚙</button>
+      </div>
+    </footer>
+
+  </div> <!-- /screen-container -->
+
+  <!-- Product spotlight: full-screen photo of a featured item, shown between menu views (js/app.js) -->
+  <section id="spotlight" class="spotlight" aria-hidden="true">
+    <img id="spotlight-img" class="spotlight-img" alt="">
+    <div class="spotlight-shade"></div>
+    <div class="spotlight-info">
+      <div id="spotlight-section" class="spotlight-section"></div>
+      <h2 id="spotlight-name" class="spotlight-name"></h2>
+      <p id="spotlight-desc" class="spotlight-desc"></p>
+      <div class="spotlight-price-row">
+        <span id="spotlight-price" class="spotlight-price"></span>
+        <span id="spotlight-badge" class="spotlight-badge"></span>
+      </div>
+    </div>
+    <img class="spotlight-logo" src="assets/brand/snack_station_logo_clean.png" alt="Snack Station">
+    <div class="spotlight-progress"><div id="spotlight-progress-bar" class="spotlight-progress-bar"></div></div>
+  </section>
+
+  <!-- Shown on a TV number the menu editor has switched off (?tv=3 when only 2 TVs are in use) -->
+  <section id="tv-idle" class="tv-idle" aria-hidden="true">
+    <img src="assets/brand/snack_station_logo_clean.png" alt="Snack Station" class="tv-idle-logo">
+    <p id="tv-idle-note" class="tv-idle-note"></p>
+  </section>
+
+  <!-- Secret Technician / Manager Panel (Ctrl+M) -->
+  <aside id="tech-panel" class="tech-panel hidden" aria-hidden="true">
+    <div class="tech-panel-header">
+      <h2>Snack Station Signage Controller</h2>
+      <button id="tech-panel-close" class="close-btn" aria-label="Close">&times;</button>
+    </div>
+    <div class="tech-panel-body">
+      <div class="form-group">
+        <label for="csv-url-input">Google Sheets Published CSV URL:</label>
+        <input type="text" id="csv-url-input" placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv" spellcheck="false">
+      </div>
+
+      <div class="tech-actions">
+        <button id="btn-save-url" class="btn btn-primary">Save &amp; Fetch Now</button>
+        <button id="btn-reset-mock" class="btn btn-secondary">Reload Authentic Menu</button>
+      </div>
+
+      <hr class="panel-divider">
+
+      <h3>Multi-Screen TV Display Routing</h3>
+      <p class="shortcut-tip">Set which boards each TV shows in the menu editor (TV screens tab).</p>
+      <div class="screen-routing-buttons">
+        <a href="?tv=1" class="btn btn-outline">This is TV 1</a>
+        <a href="?tv=2" class="btn btn-outline">This is TV 2</a>
+        <a href="?tv=3" class="btn btn-outline">This is TV 3</a>
+        <a href="?screen=rotate" class="btn btn-accent">Show all boards in turn (ignore TV setup)</a>
+      </div>
+
+      <hr class="panel-divider">
+
+      <h3>Live Simulation &amp; Kiosk Test Tools</h3>
+      <div class="simulation-actions">
+        <button id="btn-sim-price-change" class="btn btn-accent">Simulate Price Pulse (+$0.50)</button>
+        <button id="btn-sim-toggle-soldout" class="btn btn-danger">Toggle First Item Sold Out</button>
+        <button id="btn-sim-burnin-shift" class="btn btn-secondary">Test Pixel Shift Now</button>
+        <button id="btn-toggle-cursor" class="btn btn-outline">Enable Mouse Cursor</button>
+      </div>
+
+      <div class="tech-metrics">
+        <div class="metric-row"><span>Active Board:</span> <strong id="metric-active-board">Pizza &amp; Wings</strong></div>
+        <div class="metric-row"><span>Status:</span> <strong id="metric-status">Active</strong></div>
+        <div class="metric-row"><span>Last Fetch:</span> <span id="metric-fetch-time">Never</span></div>
+        <div class="metric-row"><span>Pixel Shift:</span> <span id="metric-burnin-offset">X: 0px, Y: 0px</span></div>
+        <div class="metric-row"><span>Items Loaded:</span> <span id="metric-items-count">0 items</span></div>
+      </div>
+      <p class="shortcut-tip"><kbd>Ctrl</kbd> + <kbd>M</kbd> or <kbd>~</kbd> toggles this panel at any time.</p>
+    </div>
+  </aside>
+
+  <script src="js/menu-schema.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snack Station • Cast to TV Controller</title>
+  <link rel="icon" type="image/png" href="assets/brand/favicon.png">
+  <style>
+    :root {
+      --bg: #0B0E14;
+      --card-bg: #141822;
+      --gold: #FACC15;
+      --red: #DC2626;
+      --green: #16A34A;
+      --text: #F8FAFC;
+      --text-muted: #94A3B8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      text-align: center;
+    }
+    .cast-card {
+      background: var(--card-bg);
+      border: 1px solid rgba(250, 204, 21, 0.35);
+      border-radius: 16px;
+      padding: 2rem;
+      max-width: 480px;
+      width: 100%;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+    }
+    .logo-img {
+      max-width: 180px;
+      height: auto;
+      margin-bottom: 1.25rem;
+    }
+    h1 {
+      font-size: 1.5rem;
+      color: #FFFFFF;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.01em;
+    }
+    p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 1.5rem;
+    }
+    .input-group {
+      text-align: left;
+      margin-bottom: 1.25rem;
+    }
+    .input-group label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--gold);
+      margin-bottom: 0.35rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .input-field {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      color: #FFFFFF;
+      font-size: 0.95rem;
+      outline: none;
+    }
+    .input-field:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 10px rgba(250, 204, 21, 0.25);
+    }
+    .cast-btn {
+      width: 100%;
+      padding: 1rem;
+      background: linear-gradient(135deg, var(--red) 0%, #B91C1C 100%);
+      color: #FFFFFF;
+      font-size: 1.1rem;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      border: none;
+      border-radius: 9999px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      box-shadow: 0 8px 24px rgba(220, 38, 38, 0.45);
+      transition: all 0.2s ease;
+      margin-bottom: 1rem;
+    }
+    .cast-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(220, 38, 38, 0.6);
+    }
+    .cast-btn:active {
+      transform: translateY(0);
+    }
+    .cast-btn:disabled {
+      background: #475569;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+    .status-box {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 0.75rem;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #EAB308;
+    }
+    .status-dot.connected {
+      background: #22C55E;
+      box-shadow: 0 0 8px #22C55E;
+    }
+    .tips-list {
+      margin-top: 1.5rem;
+      text-align: left;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding-top: 1rem;
+      line-height: 1.6;
+    }
+    .tips-list li {
+      margin-left: 1.2rem;
+      margin-bottom: 0.35rem;
+    }
+    .casting-list { list-style: none; margin: 0 0 1rem; text-align: left; }
+    .casting-list:empty { display: none; }
+    .casting-list li {
+      display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+      background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(34, 197, 94, 0.4);
+      border-radius: 8px; padding: 0.6rem 0.75rem; margin-bottom: 0.5rem; font-size: 0.88rem;
+    }
+    .casting-list li.ended { border-color: rgba(255, 255, 255, 0.12); color: var(--text-muted); }
+    .stop-btn {
+      background: transparent; color: var(--text); border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 6px; padding: 0.4rem 0.75rem; font: inherit; font-size: 0.82rem; cursor: pointer; min-height: 36px;
+    }
+    .stop-btn:focus-visible, .cast-btn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+    google-cast-launcher {
+      display: inline-block;
+      vertical-align: middle;
+      width: 24px;
+      height: 24px;
+      --connected-color: #22C55E;
+      --disconnected-color: #FFFFFF;
+    }
+  </style>
+  <script src="js/cast-config.js"></script>
+  <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
+</head>
+<body>
+
+  <div class="cast-card">
+    <img src="assets/brand/snack_station_logo_clean.png" alt="Snack Station" class="logo-img">
+    <h1>Cast Menu to TV</h1>
+    <p>Launch the Snack Station digital menu board directly on any Chromecast connected to your Wi-Fi.</p>
+
+    <div class="input-group">
+      <label for="menu-screen">Which menu?</label>
+      <select id="menu-screen" class="input-field">
+        <option value="tv1">TV 1: Pizza &amp; Wings (Left TV)</option>
+        <option value="tv2">TV 2: Platters &amp; Favorites (Center TV)</option>
+        <option value="tv3">TV 3: Smoothies &amp; Healthy (Right TV)</option>
+        <option value="rotate">Every board in turn (for a single TV)</option>
+      </select>
+    </div>
+
+    <button id="cast-trigger-btn" class="cast-btn">
+      <google-cast-launcher id="cast-button"></google-cast-launcher>
+      <span id="cast-btn-label">Cast to TV Display</span>
+    </button>
+
+    <ul class="casting-list" id="casting-list" aria-live="polite"></ul>
+
+    <div class="status-box">
+      <span class="status-dot" id="status-indicator"></span>
+      <span id="status-text">Searching for Chromecast on Wi-Fi...</span>
+    </div>
+
+    <ul class="tips-list" id="pc-tips" hidden>
+      <li><strong>Pick the TV:</strong> after you click Cast, Chrome lists the TVs. Choose one. Repeat for each TV with its own menu.</li>
+      <li><strong>This PC does the work:</strong> keep this page open and the PC awake and on the store Wi-Fi. If the PC sleeps, the TVs go back to their photo screen.</li>
+      <li><strong>Fills the screen:</strong> the menu is drawn at the TV's own size, so there are no black bars.</li>
+    </ul>
+
+    <ul class="tips-list" id="app-tips">
+      <li><strong>Keeps running on its own:</strong> Once cast, you can close this page or turn off your phone. The Chromecast keeps showing the menu.</li>
+      <li><strong>After a power cut or long Wi-Fi outage:</strong> the Chromecast goes back to its home screen. Open this page and cast again.</li>
+      <li><strong>Same Wi-Fi required:</strong> Make sure this device and the Chromecast are connected to the same store Wi-Fi network.</li>
+    </ul>
+  </div>
+
+  <script>
+    // Our own Chromecast receiver (receiver.html). The app ID and message channel live in js/cast-config.js.
+    const APP_ID = (window.SNACK_CAST && SNACK_CAST.appId) || "";
+    const NAMESPACE = (window.SNACK_CAST && SNACK_CAST.namespace) || "urn:x-cast:com.snackstation.menu";
+
+    const screenSelect = document.getElementById('menu-screen');
+    const statusText = document.getElementById('status-text');
+    const statusDot = document.getElementById('status-indicator');
+    const castTriggerBtn = document.getElementById('cast-trigger-btn');
+
+    // Until our own Chromecast app is registered (no APP_ID), cast from this PC instead: Chrome's
+    // Presentation API renders the menu in a hidden tab at the TV's size and streams it to the
+    // Chromecast the user picks from Chrome's own list.
+    const PC_MODE = !APP_ID;
+    const castingList = document.getElementById('casting-list');
+    const boardNames = { tv1: "Pizza & Wings", tv2: "Platters & Favorites", tv3: "Smoothies & Healthy", rotate: "Every board in turn" };
+
+    if (PC_MODE) {
+      document.getElementById('pc-tips').hidden = false;
+      document.getElementById('app-tips').hidden = true;
+      document.getElementById('cast-button').hidden = true;
+      document.getElementById('cast-btn-label').textContent = "Cast this menu to a TV";
+      if ('PresentationRequest' in window && window.isSecureContext) {
+        statusText.textContent = "Ready. Pick a menu, click Cast, then choose the TV.";
+      } else {
+        castTriggerBtn.disabled = true;
+        statusText.textContent = "Open this page in Google Chrome on this PC (http://localhost:...) to cast.";
+      }
+    }
+
+    function startPcCast() {
+      const screen = screenSelect.value;
+      const url = new URL("index.html?" + (screen === "rotate" ? "screen=rotate" : "tv=" + screen.slice(2)), location.href).href;
+      const request = new PresentationRequest([url]);
+      statusText.textContent = "Choose the TV in Chrome's list...";
+      request.start().then(function (connection) {
+        statusDot.className = "status-dot connected";
+        statusText.textContent = "Casting. Keep this page open.";
+        const li = document.createElement('li');
+        const label = document.createElement('span');
+        const stop = document.createElement('button');
+        stop.type = "button";
+        stop.className = "stop-btn";
+        stop.textContent = "Stop";
+        stop.addEventListener('click', function () { connection.terminate(); });
+        li.appendChild(label);
+        li.appendChild(stop);
+        castingList.appendChild(li);
+        const show = function (state) {
+          label.textContent = boardNames[screen] + (state === "terminated" ? ": stopped" : state === "closed" ? ": disconnected" : ": on the TV");
+          li.className = state === "connected" || state === "connecting" ? "" : "ended";
+          stop.hidden = state === "terminated";
+        };
+        show(connection.state);
+        connection.addEventListener('connect', function () { show("connected"); });
+        connection.addEventListener('close', function () { show("closed"); });
+        connection.addEventListener('terminate', function () { show("terminated"); });
+      }).catch(function (err) {
+        statusText.textContent = err && err.name === "NotAllowedError"
+          ? "Cancelled. Click Cast to try again."
+          : err && err.name === "NotFoundError"
+            ? "No TV found. Check the PC and the Chromecasts are on the same Wi-Fi."
+            : "Couldn't start the cast (" + (err && err.message || "unknown error") + ").";
+      });
+    }
+
+    window['__onGCastApiAvailable'] = function(isAvailable) {
+      if (!APP_ID) return;
+      if (isAvailable) {
+        initCastApi();
+      } else {
+        statusText.textContent = "Cast isn't available in this browser. Use Google Chrome.";
+      }
+    };
+
+    function initCastApi() {
+      const castContext = cast.framework.CastContext.getInstance();
+      castContext.setOptions({
+        receiverApplicationId: APP_ID,
+        autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
+      });
+
+      statusText.textContent = "Ready to connect to TV";
+      statusDot.className = "status-dot";
+
+      castContext.addEventListener(
+        cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
+        function(event) {
+          switch (event.sessionState) {
+            case cast.framework.SessionState.SESSION_STARTED:
+            case cast.framework.SessionState.SESSION_RESUMED:
+              statusText.textContent = "Connected to TV";
+              statusDot.className = "status-dot connected";
+              sendScreenChoice(castContext.getCurrentSession());
+              break;
+            case cast.framework.SessionState.SESSION_ENDED:
+              statusText.textContent = "Disconnected from TV";
+              statusDot.className = "status-dot";
+              break;
+          }
+        }
+      );
+    }
+
+    function sendScreenChoice(session) {
+      if (!session) return;
+      session.sendMessage(NAMESPACE, { screen: screenSelect.value }).then(function() {
+        statusText.textContent = "Menu is on the TV. You can close this page.";
+      }).catch(function(err) {
+        console.error("Failed to send the board choice to the Chromecast", err);
+        statusText.textContent = "Connected, but the TV didn't accept the board choice. Try casting again.";
+      });
+    }
+
+    screenSelect.addEventListener('change', function() {
+      if (PC_MODE) return;
+      const castContext = window.cast && cast.framework && cast.framework.CastContext.getInstance();
+      if (castContext && castContext.getCurrentSession()) sendScreenChoice(castContext.getCurrentSession());
+    });
+
+    castTriggerBtn.addEventListener('click', function() {
+      if (PC_MODE) return startPcCast();
+      const castContext = cast.framework.CastContext.getInstance();
+      if (!castContext.getCurrentSession()) {
+        castContext.requestSession().catch(function(err) {
+          console.log("Cast session request cancelled or failed", err);
+        });
+      } else {
+        sendScreenChoice(castContext.getCurrentSession());
+      }
+    });
+  </script>
+</body>
+</html>
