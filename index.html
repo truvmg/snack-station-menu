@@ -64,16 +64,15 @@
           <div class="weather-city-line" id="weather-city">NEW YORK, NY</div>
         </div>
 
-        <!-- Dynamic Centered Clock & Date Widget -->
-        <div class="clock-widget-centered">
-          <div class="clock-time-line">
-            <span id="clock-digits" class="clock-digits-main">--:--</span>
-          </div>
-          <div class="clock-day-line">
-            <span id="clock-day">FRI</span>
-            <span class="clock-dot-sep">•</span>
-            <span id="clock-ampm" class="clock-ampm-badge">PM</span>
-          </div>
+        <!-- Time in its own box (big), with AM/PM beside it -->
+        <div class="clock-time-box">
+          <span id="clock-digits" class="clock-digits-main">--:--</span>
+          <span id="clock-ampm" class="clock-ampm-badge">PM</span>
+        </div>
+
+        <!-- Day and date in their own box, with the live-connection dot -->
+        <div class="clock-date-box">
+          <div class="clock-day-line"><span id="clock-day">FRI</span></div>
           <div class="clock-date-line">
             <span id="connection-status" class="status-indicator-mini online" title="Menu Live & Connected">
               <span class="status-dot-mini"></span>
