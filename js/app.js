@@ -392,8 +392,11 @@ function scheduleNextRotation() {
     progressBar.style.width = `${pct}%`;
   }, 100);
 
-  state.rotateTimer = setTimeout(() => {
+  state.rotateTimer = setTimeout(function rotateWhenShown() {
     if (!state.autoRotate) return;
+    // Don't leave the board before every scrolling section has shown all its items once.
+    const wait = (window.__boardShownAllAt || 0) - Date.now();
+    if (wait > 0) { state.rotateTimer = setTimeout(rotateWhenShown, Math.min(wait, 60000)); return; }
     const list = state.rotationBoards && state.rotationBoards.length ? state.rotationBoards : BOARDS.map(b => b.key);
     const nextIdx = (list.indexOf(state.activeBoard) + 1) % list.length;
     setActiveBoard(list[nextIdx]);
@@ -1216,7 +1219,7 @@ async function runSpotlight() {
 }
 
 // ----------------------------------------------------------------------------
-// AUTO-SCROLL FOR LONG SECTIONS: lists that don't fit scroll down and back up, all in sync.
+// AUTO-SCROLL FOR LONG SECTIONS: lists that don't fit loop continuously (no empty gap), all in sync.
 // This is by design (owner's choice, 2026-11-23): big readable text first, scrolling to show the rest.
 // ----------------------------------------------------------------------------
 let activeAutoScrollInterval = null;
@@ -1241,6 +1244,7 @@ function sectionOverflow(list) {
 function fitSections(lists) {
   lists.forEach(list => {
     if (list.clientHeight < 40) return;   // hidden or mid-transition: can't measure, try again later
+    removeLoopCopies(list);
     // Set the size directly on the list (inherited custom properties don't always refresh the
     // rows in Chromium-based TV browsers, which made the fit measure the wrong size).
     const apply = f => { list.style.setProperty("font-size", (16 * f).toFixed(2) + "px", "important"); list.dataset.fit = f.toFixed(3); };
@@ -1261,82 +1265,108 @@ function fitSections(lists) {
   });
 }
 
+// Removes the copied rows a looping section adds, so the section can be measured as it really is.
+function removeLoopCopies(list) {
+  list.querySelectorAll(".items-track > .is-loop-copy").forEach(n => n.remove());
+  const track = list.querySelector(".items-track");
+  if (track) track.style.transform = "";
+}
+
+// A section that is too long gets a second copy of its rows after the first, and the track
+// slides up continuously: when the last item passes, the first item is already coming up
+// behind it, so there is never an empty gap. setH = height of one full set of rows.
+function prepareLoop(tr) {
+  const track = tr.track;
+  tr.loop = false; tr.setH = 0;
+  if (!track) return;
+  removeLoopCopies(tr.el);
+  const overflow = sectionOverflow(tr.el);
+  tr.el.classList.toggle("has-overflow-scroll", overflow > 1);
+  if (overflow <= 1) return;
+  const originals = [...track.children];
+  if (!originals.length) return;
+  originals.forEach(n => {
+    const copy = n.cloneNode(true);
+    copy.classList.add("is-loop-copy");
+    copy.setAttribute("aria-hidden", "true");
+    track.appendChild(copy);
+  });
+  tr.setH = track.children[originals.length].offsetTop - originals[0].offsetTop;
+  tr.loop = tr.setH > 0;
+}
+
+// When every looping section on the board has shown all its items at least once (Date.now()).
+// The board rotation waits for this, so no item is skipped before the next board comes up.
+window.__boardShownAllAt = 0;
+
 function initAutoScrolling() {
   if (activeAutoScrollInterval) {
     cancelAnimationFrame(activeAutoScrollInterval);
     activeAutoScrollInterval = null;
   }
-  autoScrollTrackers = [];
+  const myTrackers = [];
+  autoScrollTrackers = myTrackers;
+  window.__boardShownAllAt = Date.now() + 60000; // until measured: hold the board
 
   // Allow DOM layout pass to measure exact heights
   setTimeout(() => {
+    if (autoScrollTrackers !== myTrackers) return;  // redrawn again meanwhile: the newer setup runs
     const listContainers = document.querySelectorAll(".items-list");
-    fitSections(listContainers);
-    // The layout keeps settling for a moment (photos, fonts, the board's entrance), so fit again
-    // whenever a section's box changes size, and at the start of every scroll cycle (below).
-    if (window.ResizeObserver) {
-      if (window.__fitObserver) window.__fitObserver.disconnect();
-      let pending = null;
-      window.__fitObserver = new ResizeObserver(() => {
-        clearTimeout(pending);
-        pending = setTimeout(() => fitSections(document.querySelectorAll(".items-list")), 200);
-      });
-      listContainers.forEach(l => window.__fitObserver.observe(l));
-    }
-    [1500, 4000].forEach(ms => setTimeout(() => fitSections(document.querySelectorAll(".items-list")), ms));
+    listContainers.forEach(l => { l.scrollTop = 0; removeLoopCopies(l); });
     listContainers.forEach(container => {
-      container.scrollTop = 0;
-      const overflow = sectionOverflow(container);
-      container.classList.toggle("has-overflow-scroll", overflow > 1);
-      // Every list joins the shared clock; one that fits just has nothing to scroll.
-      autoScrollTrackers.push({ el: container, track: container.querySelector(".items-track"), maxScroll: overflow });
+      myTrackers.push({ el: container, track: container.querySelector(".items-track"), loop: false, setH: 0 });
     });
+    // Fit text sizes (without the loop copies), then set up the loops again.
+    const refit = () => {
+      if (autoScrollTrackers !== myTrackers) return;
+      myTrackers.forEach(tr => removeLoopCopies(tr.el));
+      fitSections(myTrackers.map(tr => tr.el));
+      myTrackers.forEach(prepareLoop);
+    };
+    refit();
+    // The layout keeps settling for a moment (photos, fonts, the board's entrance), so fit again a
+    // little later, and at the start of every loop (below). (No ResizeObserver: refitting changes
+    // the text size, which retriggered it endlessly and kept restarting the loop.)
+    if (window.__fitObserver) { window.__fitObserver.disconnect(); window.__fitObserver = null; }
+    [1500, 3500].forEach(ms => setTimeout(refit, ms));
 
-    if (autoScrollTrackers.length > 0) {
-      // SYNCHRONIZED: one shared clock for every section on the board. All lists pause at the
-      // top together, scroll down together, pause at the bottom together and come back up
-      // together. Each list covers its own overflow in the same time, so a longer list moves a
-      // little faster. The travel time comes from the longest list at a comfortable reading speed.
-      const PAUSE_MS = 4000;          // hold at the top and at the bottom
-      const SPEED_PX_PER_S = 28;      // speed of the longest list (in 1920x1080 board pixels)
-      const start = performance.now();
-      // Runs in step with the screen's refresh (requestAnimationFrame) and moves each section's
-      // track with a GPU transform in fractions of a pixel: smooth on Fire TV / Chromecast.
-      const myTrackers = autoScrollTrackers;
-      let lastMeasure = 0;
-      const tick = () => {
-        if (autoScrollTrackers !== myTrackers) return;          // the board was redrawn: a new loop runs
-        activeAutoScrollInterval = requestAnimationFrame(tick);
-        const now = performance.now();
-        if (now - lastMeasure > 1000) {                          // sizes rarely change: measure once a second
-          lastMeasure = now;
-          myTrackers.forEach(t => { t.maxScroll = sectionOverflow(t.el); });
-        }
-        const longest = Math.max(0, ...myTrackers.map(t => t.maxScroll));
-        if (longest <= 1) { myTrackers.forEach(tr => { if (tr.track) tr.track.style.transform = ""; }); return; }
-        const travel = Math.max(3000, (longest / SPEED_PX_PER_S) * 1000);
-        const cycle = 2 * PAUSE_MS + 2 * travel;
-        const elapsed = now - start;
-        const cycleNo = Math.floor(elapsed / cycle);
-        if (cycleNo !== autoScrollTrackers.cycleNo) { // back at the top: re-check the text sizes
-          autoScrollTrackers.cycleNo = cycleNo;
-          if (cycleNo > 0) { fitSections(myTrackers.map(tr => tr.el)); lastMeasure = 0; }
-        }
-        const t = elapsed % cycle;
-        let p; // 0 = top, 1 = bottom
-        if (t < PAUSE_MS) p = 0;
-        else if (t < PAUSE_MS + travel) p = (t - PAUSE_MS) / travel;
-        else if (t < 2 * PAUSE_MS + travel) p = 1;
-        else p = 1 - (t - 2 * PAUSE_MS - travel) / travel;
-        const eased = p * p * (3 - 2 * p); // ease in and out, no jerk at the ends
-        myTrackers.forEach(tr => {
-          const y = eased * tr.maxScroll;
-          if (tr.track) tr.track.style.transform = y ? `translate3d(0, ${-y.toFixed(2)}px, 0)` : "";
-          else tr.el.scrollTop = y;
-        });
-      };
+    // SYNCHRONIZED LOOP: one shared clock for the whole board. Every looping section rests at its
+    // first item together, then slides up continuously and arrives back at its first item at the
+    // same moment as the others (a longer list just moves a little faster). The loop time comes
+    // from the longest list at a comfortable reading speed. Runs on the screen's refresh with a
+    // GPU transform (smooth on Fire TV). While a spotlight covers the board the loop waits.
+    const PAUSE_MS = 4500;           // rest on the first items at the start of each loop
+    const SPEED_PX_PER_S = 30;       // speed of the longest list (1920x1080 board pixels)
+    let cycleStart = performance.now();
+    let lastNow = cycleStart;
+    let firstLoopDone = false;
+    const spotlightEl = document.getElementById("spotlight");
+    const tick = () => {
+      if (autoScrollTrackers !== myTrackers) return;          // the board was redrawn: a new loop runs
       activeAutoScrollInterval = requestAnimationFrame(tick);
-    }
+      const now = performance.now();
+      if (spotlightEl && spotlightEl.classList.contains("is-visible")) cycleStart += now - lastNow; // hold
+      lastNow = now;
+      const longest = Math.max(0, ...myTrackers.map(tr => tr.loop ? tr.setH : 0));
+      if (!longest) { if (!firstLoopDone) { window.__boardShownAllAt = 0; firstLoopDone = true; } return; }
+      const loopMs = Math.max(6000, (longest / SPEED_PX_PER_S) * 1000);
+      const cycle = PAUSE_MS + loopMs;
+      let t = now - cycleStart;
+      if (t >= cycle) {                                       // back at the first items everywhere
+        firstLoopDone = true;
+        window.__boardShownAllAt = 0;
+        cycleStart = now; t = 0;
+        refit();                                              // re-check text sizes at the top
+      }
+      if (!firstLoopDone) window.__boardShownAllAt = Date.now() + (cycle - t) + 500;
+      const p = t < PAUSE_MS ? 0 : (t - PAUSE_MS) / loopMs;   // 0..1 through one full set of rows
+      myTrackers.forEach(tr => {
+        if (!tr.track) return;
+        const y = tr.loop ? p * tr.setH : 0;
+        tr.track.style.transform = y ? `translate3d(0, ${-y.toFixed(2)}px, 0)` : "";
+      });
+    };
+    activeAutoScrollInterval = requestAnimationFrame(tick);
   }, 300);
 }
 
