@@ -1228,13 +1228,23 @@ let autoScrollTrackers = [];
 const FIT_MIN = 1, FIT_MAX = 1.35, FIT_SNUG = 0.95;
 // Web fonts change text widths when they arrive, so fit again once they have loaded.
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (autoScrollTrackers.length) initAutoScrolling(); });
+// How far a section's rows reach past its box (0 when they fit). Measured from the track's
+// layout height, which a slide (transform) doesn't change.
+function sectionOverflow(list) {
+  const track = list.querySelector(".items-track");
+  if (!track) return Math.max(0, list.scrollHeight - list.clientHeight);
+  const cs = getComputedStyle(list);
+  const inner = list.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  return Math.max(0, track.offsetHeight - inner);
+}
+
 function fitSections(lists) {
   lists.forEach(list => {
     if (list.clientHeight < 40) return;   // hidden or mid-transition: can't measure, try again later
     // Set the size directly on the list (inherited custom properties don't always refresh the
     // rows in Chromium-based TV browsers, which made the fit measure the wrong size).
     const apply = f => { list.style.setProperty("font-size", (16 * f).toFixed(2) + "px", "important"); list.dataset.fit = f.toFixed(3); };
-    const fits = f => { apply(f); return list.scrollHeight <= list.clientHeight; };
+    const fits = f => { apply(f); return sectionOverflow(list) <= 0; };
     if (!fits(FIT_MIN)) {
       // Only a hair too long: shrink a little (to 95%) rather than scroll a few pixels.
       if (fits(FIT_SNUG)) {
@@ -1253,7 +1263,7 @@ function fitSections(lists) {
 
 function initAutoScrolling() {
   if (activeAutoScrollInterval) {
-    clearInterval(activeAutoScrollInterval);
+    cancelAnimationFrame(activeAutoScrollInterval);
     activeAutoScrollInterval = null;
   }
   autoScrollTrackers = [];
@@ -1276,10 +1286,10 @@ function initAutoScrolling() {
     [1500, 4000].forEach(ms => setTimeout(() => fitSections(document.querySelectorAll(".items-list")), ms));
     listContainers.forEach(container => {
       container.scrollTop = 0;
-      const overflow = container.scrollHeight - container.clientHeight;
+      const overflow = sectionOverflow(container);
       container.classList.toggle("has-overflow-scroll", overflow > 1);
       // Every list joins the shared clock; one that fits just has nothing to scroll.
-      autoScrollTrackers.push({ el: container, maxScroll: Math.max(0, overflow) });
+      autoScrollTrackers.push({ el: container, track: container.querySelector(".items-track"), maxScroll: overflow });
     });
 
     if (autoScrollTrackers.length > 0) {
@@ -1290,20 +1300,27 @@ function initAutoScrolling() {
       const PAUSE_MS = 4000;          // hold at the top and at the bottom
       const SPEED_PX_PER_S = 28;      // speed of the longest list (in 1920x1080 board pixels)
       const start = performance.now();
-      activeAutoScrollInterval = setInterval(() => {
-        let longest = 0;
-        autoScrollTrackers.forEach(t => {
-          t.maxScroll = Math.max(0, t.el.scrollHeight - t.el.clientHeight);
-          longest = Math.max(longest, t.maxScroll);
-        });
-        if (longest <= 1) return;
+      // Runs in step with the screen's refresh (requestAnimationFrame) and moves each section's
+      // track with a GPU transform in fractions of a pixel: smooth on Fire TV / Chromecast.
+      const myTrackers = autoScrollTrackers;
+      let lastMeasure = 0;
+      const tick = () => {
+        if (autoScrollTrackers !== myTrackers) return;          // the board was redrawn: a new loop runs
+        activeAutoScrollInterval = requestAnimationFrame(tick);
+        const now = performance.now();
+        if (now - lastMeasure > 1000) {                          // sizes rarely change: measure once a second
+          lastMeasure = now;
+          myTrackers.forEach(t => { t.maxScroll = sectionOverflow(t.el); });
+        }
+        const longest = Math.max(0, ...myTrackers.map(t => t.maxScroll));
+        if (longest <= 1) { myTrackers.forEach(tr => { if (tr.track) tr.track.style.transform = ""; }); return; }
         const travel = Math.max(3000, (longest / SPEED_PX_PER_S) * 1000);
         const cycle = 2 * PAUSE_MS + 2 * travel;
-        const elapsed = performance.now() - start;
+        const elapsed = now - start;
         const cycleNo = Math.floor(elapsed / cycle);
         if (cycleNo !== autoScrollTrackers.cycleNo) { // back at the top: re-check the text sizes
           autoScrollTrackers.cycleNo = cycleNo;
-          if (cycleNo > 0) fitSections(autoScrollTrackers.map(tr => tr.el));
+          if (cycleNo > 0) { fitSections(myTrackers.map(tr => tr.el)); lastMeasure = 0; }
         }
         const t = elapsed % cycle;
         let p; // 0 = top, 1 = bottom
@@ -1312,8 +1329,13 @@ function initAutoScrolling() {
         else if (t < 2 * PAUSE_MS + travel) p = 1;
         else p = 1 - (t - 2 * PAUSE_MS - travel) / travel;
         const eased = p * p * (3 - 2 * p); // ease in and out, no jerk at the ends
-        autoScrollTrackers.forEach(tr => { tr.el.scrollTop = eased * tr.maxScroll; });
-      }, 33);
+        myTrackers.forEach(tr => {
+          const y = eased * tr.maxScroll;
+          if (tr.track) tr.track.style.transform = y ? `translate3d(0, ${-y.toFixed(2)}px, 0)` : "";
+          else tr.el.scrollTop = y;
+        });
+      };
+      activeAutoScrollInterval = requestAnimationFrame(tick);
     }
   }, 300);
 }
@@ -1321,9 +1343,14 @@ function initAutoScrolling() {
 function populateList(containerEl, items) {
   if (!containerEl) return;
   containerEl.innerHTML = "";
+  // Rows sit in a track; long sections slide the track (GPU transform), which is much smoother
+  // on TV sticks than changing scrollTop.
+  const track = document.createElement("div");
+  track.className = "items-track";
+  containerEl.appendChild(track);
   items.forEach(item => {
     const card = createItemCardElement(item);
-    containerEl.appendChild(card);
+    track.appendChild(card);
   });
 }
 

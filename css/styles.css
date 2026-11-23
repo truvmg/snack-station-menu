@@ -1874,3 +1874,10 @@ kbd {
 .platters-feature .board-feature-img { object-position: 10% 72%; }
 .board-layout-platters .board-feature-image-card { height: 110px !important; }
 .board-layout-pizza .board-feature-image-card { height: 100px !important; }
+/* Smooth scrolling: rows live in a track that slides on the GPU (see initAutoScrolling) */
+.items-track        { display: flex; flex-direction: column; flex: 1 0 auto; gap: inherit;
+                      justify-content: inherit; will-change: transform; backface-visibility: hidden; }
+/* Blur behind small labels is expensive on TV sticks and invisible from across the room */
+.combo-visual-tag,
+.feature-menu-pill,
+.feature-tag        { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
