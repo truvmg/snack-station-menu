@@ -1876,7 +1876,7 @@ kbd {
 .board-layout-pizza .board-feature-image-card { height: 100px !important; }
 /* Smooth scrolling: rows live in a track that slides on the GPU (see initAutoScrolling) */
 .items-track        { display: flex; flex-direction: column; flex: 1 0 auto; gap: inherit;
-                      justify-content: inherit; will-change: transform; backface-visibility: hidden; }
+                      justify-content: inherit; }
 /* Blur behind small labels is expensive on TV sticks and invisible from across the room */
 .combo-visual-tag,
 .feature-menu-pill,
@@ -1902,3 +1902,12 @@ kbd {
 .weather-icon            { font-size: 1.6rem !important; }
 .weather-temp            { font-size: 1.6rem !important; }
 .weather-city-line       { font-size: 0.72rem !important; overflow: visible !important; text-overflow: clip !important; }
+
+/* MEMORY (2026-11-23): Fire TV sticks have ~1.5 GB shared with Amazon's own apps. Every endlessly
+   animated photo keeps a full-size copy in graphics memory; when memory ran out the web view went
+   black. Photos are now still (no slow zoom / float); text tickers and section loops still move. */
+.combo-visual-img,
+.board-feature-img,
+.wings-cutout-showcase-img,
+.spotlight-img      { animation: none !important; will-change: auto !important; }
+.screen-container   { will-change: auto !important; }
