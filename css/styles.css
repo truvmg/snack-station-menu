@@ -1911,3 +1911,6 @@ kbd {
 .wings-cutout-showcase-img,
 .spotlight-img      { animation: none !important; will-change: auto !important; }
 .screen-container   { will-change: auto !important; }
+/* Bigger board title at the top left (2026-11-23) */
+.header-left        { max-width: 700px !important; }
+.board-headline     { font-size: 2.8rem !important; }
